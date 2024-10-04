@@ -1,8 +1,6 @@
 private const string GIPHY_ICON = "https://giphy.com/static/img/favicon.png";
 
-public errordomain MessageError {
-    FAILED
-}
+
 
 public errordomain EmojiConfigError {
     UNKNOWN_LOCALE,
@@ -14,16 +12,15 @@ public errordomain EmojiConfigError {
 public class QuickCopy : Adw.Application {
     public MainUI main_window;
     
-    private static Example _instance;
-    public static Example instance {
+    private static QuickCopy _instance;
+    public static QuickCopy instance {
         get {
             if (_instance == null)
-                _instance = new Example();
-            
+                _instance = new QuickCopy();
             return _instance;
         }
     }
-    
+
     construct {
         application_id = "com.ekstdo.quick-copy";
         flags = ApplicationFlags.DEFAULT_FLAGS;
@@ -41,19 +38,7 @@ public class QuickCopy : Adw.Application {
     }
     
     public static int main(string[] args) {
-        var app = Example.instance;
+        var app = QuickCopy.instance;
         return app.run(args);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
