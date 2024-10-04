@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/com/ekstdo/quick-copy/">
+  <file>ui/main.ui</file>
+  </gresource>
+  <gresource prefix="/unicode/icons/">
+    <file>./icons/unicode-logo.jpg</file>
+  </gresource>
+  <gresource prefix="/emojibase/bn">
+    <file>./node_modules/emojibase-data/bn/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/da">
+    <file>./node_modules/emojibase-data/da/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/de">
+    <file>./node_modules/emojibase-data/de/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/en">
+    <file>./node_modules/emojibase-data/en/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/en-gb">
+    <file>./node_modules/emojibase-data/en-gb/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/es">
+    <file>./node_modules/emojibase-data/es/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/es-mx">
+    <file>./node_modules/emojibase-data/es-mx/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/et">
+    <file>./node_modules/emojibase-data/et/compact.json</file>
+  </gresource>
+    <gresource prefix="/emojibase/fi">
+    <file>./node_modules/emojibase-data/fi/compact.json</file>
+  </gresource>
+    <gresource prefix="/emojibase/fr">
+    <file>./node_modules/emojibase-data/fr/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/hi">
+    <file>./node_modules/emojibase-data/hi/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/hu">
+    <file>./node_modules/emojibase-data/hu/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/it">
+    <file>./node_modules/emojibase-data/it/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/ja">
+    <file>./node_modules/emojibase-data/ja/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/ko">
+    <file>./node_modules/emojibase-data/ko/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/lt">
+    <file>./node_modules/emojibase-data/lt/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/meta">
+    <file>./node_modules/emojibase-data/meta/groups.json</file>
+    <file>./node_modules/emojibase-data/meta/hexcodes.json</file>
+    <file>./node_modules/emojibase-data/meta/unicode-names.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/ms">
+    <file>./node_modules/emojibase-data/ms/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/nb">
+    <file>./node_modules/emojibase-data/nb/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/nl">
+    <file>./node_modules/emojibase-data/nl/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/pl">
+    <file>./node_modules/emojibase-data/pl/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/pt">
+    <file>./node_modules/emojibase-data/pt/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/ru">
+    <file>./node_modules/emojibase-data/ru/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/sv">
+    <file>./node_modules/emojibase-data/sv/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/th">
+    <file>./node_modules/emojibase-data/th/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/uk">
+    <file>./node_modules/emojibase-data/uk/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/zh">
+    <file>./node_modules/emojibase-data/zh/compact.json</file>
+  </gresource>
+  <gresource prefix="/emojibase/zh-hant">
+    <file>./node_modules/emojibase-data/zh-hant/compact.json</file>
+  </gresource>
+</gresources>

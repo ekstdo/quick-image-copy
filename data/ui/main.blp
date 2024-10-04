@@ -1,0 +1,79 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $MainUI : Adw.Window {
+  Box {
+    orientation: vertical;
+
+    Adw.HeaderBar {
+      Button button_new_tab {
+        icon-name: "tab-new-symbolic";
+      }
+
+      Button button_overview {
+        icon-name: "view-grid-symbolic";
+      }
+
+      [title]
+      Entry search_bar {}
+    }
+
+    Notebook {
+      Box emoji_stuff {}
+
+      [tab]
+      Image {
+        icon-name: "face-smile";
+      }
+
+      Box image-stuff {
+        orientation: vertical;
+
+        Box image-config {
+          orientation: horizontal;
+
+          Entry image-path {}
+
+          Button image-path-select {
+            label: _("Select Folder…");
+            halign: center;
+          }
+        }
+      }
+
+      [tab]
+      Image {
+        icon-name: "image-x-generic";
+      }
+
+      Box giphy-stuff {}
+
+      [tab]
+      Picture giphy_icon {
+        halign: center;
+        valign: center;
+      }
+
+      Box unicode-stuff {}
+
+      [tab]
+      Image {
+        icon-name: "unicode-logo";
+      }
+
+      Box history-stuff {}
+
+      [tab]
+      Image {
+        icon-name: "history";
+      }
+
+      Box text-stuff {}
+
+      [tab]
+      Image {
+        icon-name: "text-x-generic";
+      }
+    }
+  }
+}

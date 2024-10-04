@@ -1,0 +1,14 @@
+{
+  "name": "quick-copy",
+  "version": "0.1.0",
+  "description": "quickly copy emojis, images and clipboard history",
+  "main": "main.vala",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "emojibase-data": "^15.3.2"
+  }
+}
