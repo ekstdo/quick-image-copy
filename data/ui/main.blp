@@ -18,8 +18,17 @@ template $MainUI : Adw.Window {
       Entry search_bar {}
     }
 
-    Notebook {
-      Box emoji_stuff {}
+    Notebook tabs {
+      ScrolledWindow {
+        hscrollbar-policy: never;
+        propagate-natural-height: true;
+        min-content-height: 400;
+        max-content-height: 600;
+
+        Box emoji_stuff {
+          orientation: vertical;
+        }
+      }
 
       [tab]
       Image {
@@ -58,7 +67,7 @@ template $MainUI : Adw.Window {
 
       [tab]
       Image {
-        icon-name: "unicode_logo";
+        icon-name: "/unicode/icons/icons/unicode_logo.jpg";
       }
 
       Box history_stuff {}

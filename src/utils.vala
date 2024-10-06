@@ -23,3 +23,65 @@ private async Bytes ? get_image_bytes (string url) throws Error {
 
     return image_bytes;
 }
+
+
+public class ObservableArrayList<T> : ListModel, Gee.ArrayList<T> {
+    public Object? get_item(uint position){
+        if((int)position > size){
+            return null;
+        }
+
+        return (Object?) this.get((int)position);
+    }
+
+    public Type get_item_type(){
+        return element_type;
+    }
+
+    public uint get_n_items(){
+        return (uint)size;
+    }
+
+    public new Object? get_object(uint position){
+        if((int)position > size){
+            return null;
+        }
+        return (Object) this.get((int)position);
+    }
+    
+    public override bool add (T item) {
+        var current_size = size;
+        var result = base.add(item);
+        if (result) {
+            items_changed (current_size, 0, 1);
+        }
+        return result;
+    }
+
+    public override void insert (int index, T item) {
+        base.insert(index, item);
+    }
+
+    public bool add_all_signal (Gee.Collection<T> collection) {
+        var current_size = size;
+        var result = base.add_all(collection);
+        if (result) {
+            items_changed (current_size, 0, collection.size);
+        }
+        return result;
+    }
+
+    public override T remove_at (int index) {
+        var result = base.remove_at(index);
+        items_changed (index, 1, 0);
+        return result;
+    }
+
+    public override void clear () {
+        var current_size = size;
+        base.clear();
+        items_changed(0, size, 0);
+    }
+
+    // todo: remove
+}
