@@ -19,14 +19,50 @@ template $MainUI : Adw.Window {
     }
 
     Notebook tabs {
-      ScrolledWindow {
-        hscrollbar-policy: never;
-        propagate-natural-height: true;
-        min-content-height: 400;
-        max-content-height: 600;
+      Box {
+        orientation: vertical;
 
-        Box emoji_stuff {
+        ScrolledWindow {
+          hscrollbar-policy: never;
+          propagate-natural-height: true;
+          min-content-height: 400;
+          max-content-height: 600;
+
+          Box {
+            orientation: vertical;
+
+            Box emoji_stuff {
+              orientation: vertical;
+            }
+
+            FlowBox emoji_results {
+              visible: false;
+            }
+          }
+        }
+
+        Box {
           orientation: vertical;
+
+          Box {
+            Label {
+              label: "Tags: ";
+            }
+
+            Label emoji_tags {
+            }
+          }
+
+
+          Box {
+            Label {
+              label: "Variants: ";
+            }
+          }
+
+          Label {
+            label: "hi";
+          }
         }
       }
 

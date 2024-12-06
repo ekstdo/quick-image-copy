@@ -5,7 +5,29 @@ public class EmojiEntry: Object {
     public uint32 order { get; set; }
     public string[] tags { get; set; }
     public string unicode { get; set; }
+
+    public bool match(string search) {
+        foreach (var tag in tags) {
+            if (tag.contains(search)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int score(string search) {
+        var result = 0;
+        foreach (var tag in tags) {
+            // stdout.printf("tag cmp %s with %s\n", tag, search);
+            var temp = needleman_wunsch_score(search, tag);
+            if (temp[temp.length - 1] > result) {
+                result = temp[temp.length - 1];
+            }
+        }
+        return result;
+    }
 }
+
 
 // {"group":9,"hexcode":"1F1F9-1F1EC","label":"Togo","order":4997,"tags":["TG"],"unicode":"🇹🇬"}
 
