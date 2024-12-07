@@ -187,41 +187,96 @@ public class ObservableArrayList<T> : ListModel, Gee.ArrayList<T> {
     // todo: implement `remove` method
 }
 
+public string dedup(string inp){
+    Gee.TreeSet<unichar> unicode_cmp = new Gee.TreeSet<unichar>();
+
+    unichar cx;
+    int ic = 0;
+    for (int i = 0; inp.get_next_char (ref ic, out cx); i++) {
+        unicode_cmp.add(cx);
+    }
+
+    var builder = new StringBuilder ();
+    foreach (var i in unicode_cmp) {
+        builder.append_unichar(i);
+    }
+
+    return builder.str;
+}
+
+public bool match_strs(string a, string b, int minimum) {
+    var counter = 0;
+    unichar cx;
+    int ic = 0;
+    for (int i = 0; a.get_next_char (ref ic, out cx); i++) {
+
+        unichar cy;
+        int jc = 0;
+        for (int j = 0; b.get_next_char (ref jc, out cy); j++) {
+            if (cx == cy) {
+                counter++;
+                if (counter > minimum) 
+                    return true;
+            }
+        }
+    }
+    return false;
+}
 
 public int max3(int i, int j, int k) {
     return i > j? (i > k? i: k): (j > k? j: k);
 }
 
-public int[] needleman_wunsch_score(owned string x, owned string y, int insert_cost = -2, int delete_cost = -2, int edit_cost = -1, int match_cost = 2) {
+public int[] needleman_wunsch_score(owned string x, owned string y, int insert_cost = -1, int delete_cost = -1, int edit_cost = -2, int match_cost = 1) {
     
     var y_len = y.char_count ();
-    // stdout.printf("hoi: %d\n", y_len+1);
-    var scoreFirst = new int[y_len + 1];
-    // stdout.printf("hoi2: %d\n", y_len+1);
-    var scoreLast = new int[y_len + 1];
+    var score = new int[y_len + 1];
     var accum = 0;
     for (var i = 0; i <= y_len; i++) {
-        scoreFirst[i] = accum;
+        score[i] = accum;
         accum += insert_cost;
     }
     unichar cx;
-    return scoreFirst;
-    for (int i = 0; x.get_next_char (ref i, out cx);) {
-        scoreLast[0] = scoreFirst[0] + insert_cost;
+    int ic = 0;
+    for (int i = 0; x.get_next_char (ref ic, out cx); i++) {
+        var prev = score[0];
+        score[0] += delete_cost;
+        var temp = score[0];
 
         unichar cy;
-        for (int j = 0; y.get_next_char (ref j, out cy);) {
-            scoreLast[j + 1] = max3(
-                scoreLast[j] + insert_cost,
-                scoreFirst[j + 1] + delete_cost,
-                scoreFirst[j] + (cx == cy ? match_cost : edit_cost));
+        int jc = 0;
+
+    /* if (y.contains("„akzeptieren“")){
+        stdout.printf("; %s\t\t\t", x);
+        foreach (var i_ in score) {
+            stdout.printf("%d,", i_);
         }
-        var tmp = scoreFirst;
-        scoreFirst = scoreLast;
-        scoreLast = tmp;
+        stdout.printf("\n");
+    }*/
+        for (int j = 1; y.get_next_char (ref jc, out cy); j++) {
+            bool same = cx == cy;
+            temp = max3(
+                temp + insert_cost,
+                score[j] + delete_cost,
+                prev + (same ? match_cost : edit_cost));
+            prev = score[j];
+            score[j] = temp;
+
+            if (j > y.char_count()) {
+                stdout.printf("ERROR: %s / %s \n", x, y);
+            }
+        }
     }
 
-    return scoreFirst;
+    /*if (y.contains("„akzeptieren“")){
+        stdout.printf("%s: \t\t\t", y);
+        foreach (var i in score) {
+            stdout.printf("%d,", i);
+        }
+        stdout.printf("\n");
+    }*/
+
+    return score;
 }
 /*
 string[] hirschberg_matching(string x, string y) {

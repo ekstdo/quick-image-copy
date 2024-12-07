@@ -1,4 +1,4 @@
-sources = files('main.vala', 'ui/main-ui.vala', 'utils.vala', 'emojis.vala')
+sources = files('main.vala', 'ui/main-ui.vala', 'utils.vala', 'emojis.vala', 'ui-utils.vala')
 
 app = executable(
 	'quick-copy',

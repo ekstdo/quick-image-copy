@@ -46,22 +46,39 @@ template $MainUI : Adw.Window {
 
           Box {
             Label {
+              label: "Label: ";
+            }
+
+            Label emoji_label {
+            }
+          }
+
+          Box {
+            Label {
               label: "Tags: ";
             }
 
-            Label emoji_tags {
+            Box emoji_tags {
             }
           }
 
 
           Box {
+            orientation: vertical;
             Label {
               label: "Variants: ";
             }
+
+            FlowBox emoji_variants {
+            }
           }
 
-          Label {
-            label: "hi";
+          Box {
+              Label {
+                  label: "Score: ";
+              }
+
+              Label emoji_score {}
           }
         }
       }

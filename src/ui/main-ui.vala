@@ -23,7 +23,17 @@ public class MainUI : Adw.Window {
     public unowned Gtk.FlowBox emoji_results;
 
     [GtkChild]
-    public unowned Gtk.Label emoji_tags;
+    public unowned Gtk.Label emoji_label;
+
+
+    [GtkChild]
+    public unowned Gtk.Label emoji_score;
+
+    [GtkChild]
+    public unowned Gtk.Box emoji_tags;
+
+    [GtkChild]
+    public unowned Gtk.FlowBox emoji_variants;
 
 
 
