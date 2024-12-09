@@ -324,7 +324,41 @@ public class QuickCopy : Adw.Application {
         foreach(var page in pages){
             page.initialize.begin();
         }
-        main_window.search_bar.changed.connect((t) => pages[current_page].search(t));
+        main_window.search_bar.changed.connect((t) => {
+            string search_string = t.get_text();
+            int ind = search_string.index_of_char('>');
+            if (ind != -1) {
+                string before = search_string.substring(0, ind);
+                string after = search_string.substring(ind + 1);
+                int n = 1;
+                int parsed_before = int.parse(before);
+                if (parsed_before != 0) {
+                    n = parsed_before;
+                }
+
+                for (var i = 0; i < n; i++) {
+                    main_window.tabs.next_page();
+                }
+                t.set_text(after);
+            }
+
+            ind = search_string.index_of_char('<');
+            if (ind != -1) {
+                string before = search_string.substring(0, ind);
+                string after = search_string.substring(ind + 1);
+                int n = 1;
+                int parsed_before = int.parse(before);
+                if (parsed_before != 0) {
+                    n = parsed_before;
+                }
+
+                for (var i = 0; i < n; i++) {
+                    main_window.tabs.prev_page();
+                }
+                t.set_text(after);
+            }
+            pages[current_page].search(t);
+        });
         main_window.tabs.switch_page.connect((p, i) => {
             if (i < 2)
                 current_page = i;
