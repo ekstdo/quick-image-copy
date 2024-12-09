@@ -101,6 +101,27 @@ template $MainUI : Adw.Window {
             halign: center;
           }
         }
+
+        ScrolledWindow {
+          hscrollbar-policy: never;
+          propagate-natural-height: true;
+          min-content-height: 400;
+          max-content-height: 600;
+          Box{
+            orientation: vertical;
+            Box image_categories {
+              orientation: vertical;
+            }
+            FlowBox image_results {
+            }
+          }
+        }
+
+        Grid {
+          
+        }
+
+        
       }
 
       [tab]

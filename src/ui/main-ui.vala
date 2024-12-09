@@ -1,6 +1,5 @@
 [GtkTemplate (ui = "/com/ekstdo/quick-copy/ui/main.ui")]
 public class MainUI : Adw.Window {
-
     [GtkChild]
     public unowned Gtk.Entry search_bar;
 
@@ -25,7 +24,6 @@ public class MainUI : Adw.Window {
     [GtkChild]
     public unowned Gtk.Label emoji_label;
 
-
     [GtkChild]
     public unowned Gtk.Label emoji_score;
 
@@ -35,7 +33,11 @@ public class MainUI : Adw.Window {
     [GtkChild]
     public unowned Gtk.FlowBox emoji_variants;
 
+    [GtkChild]
+    public unowned Gtk.Box image_categories;
 
+    [GtkChild]
+    public unowned Gtk.FlowBox image_results;
 
     public MainUI(Gtk.Application app) {
         Object(application: app);

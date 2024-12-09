@@ -8,8 +8,128 @@ public errordomain EmojiConfigError {
 }
 
 public abstract class SearchPage {
-    public abstract void initialize();
+    public abstract async void initialize();
     public abstract void search(Gtk.Editable t);
+}
+
+public class ImagePage: SearchPage {
+    public MainUI main_window;
+    private File data_folder;
+    Gdk.Clipboard clipboard;
+    public Gee.TreeMap<string, ObservableArrayList<ImageEntry>> data;
+    public Gtk.FlowBox[] category_flowboxes;
+    Gee.TreeMap<string, int> score_map;
+    ListStore search_results;
+    int show_first_n_results = 100;
+
+    public ImagePage(MainUI main_window, Gdk.Clipboard clipboard){
+        this.main_window = main_window;
+        this.clipboard = clipboard;
+        this.search_results = new ListStore(typeof(ImageEntry));
+    }
+
+
+    async void load_image_folder (File file) {
+        var file_path = file.get_path ();
+
+        if (file_path == null) {
+            warning ("Error: file has no path\n");
+            return;
+        }
+        data = load_image_entries(file_path + "/imgs");
+        category_flowboxes = new Gtk.FlowBox[data.size];
+        data_folder = File.new_for_path(file_path);
+        main_window.image_path.buffer.set_text (file_path.data);
+
+        remove_children(main_window.image_categories);
+        int index = 0;
+        foreach (var entries in data) {
+            category_flowboxes[index] = new Gtk.FlowBox() {
+                max_children_per_line = 10
+            };
+            category_flowboxes[index].bind_model(entries.value, create_button);
+
+            var expander = new Gtk.Expander(entries.key) {
+                expanded = true,
+                child = category_flowboxes[index]
+            };
+
+            main_window.image_categories.append(expander);
+            index += 1;
+        }
+
+        main_window.image_results.bind_model(search_results, create_button);
+    }
+
+    public Gtk.Button create_button(Object image){
+        ImageEntry entry = (ImageEntry) image;
+        var button = new Gtk.Button();
+        var texture = Gdk.Texture.for_pixbuf(entry.image);
+        Gtk.Image image_widget = new Gtk.Image.from_paintable(texture);
+        button.set_child(image_widget);
+        button.clicked.connect(() => clipboard.set_texture(texture) );
+
+        return button;
+    }
+
+    async void select_image_folder () throws Error {
+        var file_dialog = new Gtk.FileDialog ();
+        var file = yield file_dialog.select_folder (main_window, null);
+
+        load_image_folder.begin (file);
+    }
+
+    public override async void initialize() {
+        data_folder = File.new_for_path (Environment.get_user_data_dir () + "/quick-copy");
+        load_image_folder(data_folder);
+        main_window.image_path_select.clicked.connect (() => select_image_folder ());
+        main_window.image_path.buffer.set_text (data_folder.get_path().data);
+    }
+
+
+    public override void search(Gtk.Editable t) {
+        string search_string = t.get_text();
+        if (((Gtk.Entry) t).buffer.length > 0) {
+            main_window.image_categories.visible = false;
+            main_window.image_results.visible = true;
+
+            main_window.image_results.bind_model(new ListStore(typeof(ImageEntry)), create_button);
+            search_results.remove_all();
+            string deduped = dedup(search_string);
+            foreach(var entry in data){
+                foreach(var item in entry.value){
+                    if (item.match(deduped))
+                        search_results.append(item);
+                }
+            }
+            score_map = new Gee.TreeMap<string, int>((a, b) => strcmp(a, b));
+            search_results.sort((a, b) => {
+                ImageEntry a_ = (ImageEntry) a;
+                int score_a;
+                if (score_map.has_key(a_.path)) {
+                    score_a = score_map[a_.path];
+                } else {
+                    score_a = a_.score(search_string);
+                    score_map[a_.path] = score_a;
+                }
+                ImageEntry b_ = (ImageEntry) b;
+                int score_b;
+                if (score_map.has_key(b_.path)) {
+                    score_b = score_map[b_.path];
+                } else {
+                    score_b = b_.score(search_string);
+                    score_map[b_.path] = score_b;
+                }
+                return (score_a > score_b) ? -1 : (score_a == score_b) ? 0 : 1;
+            });
+            search_results.splice(show_first_n_results, search_results.n_items - show_first_n_results, new EmojiEntry[0]);
+            main_window.image_results.bind_model(search_results, create_button);
+        } else {
+            main_window.image_categories.visible = true;
+            main_window.image_results.visible = false;
+            search_results.remove_all();
+        }
+    }
 }
 
 public class EmojiPage: SearchPage {
@@ -41,7 +161,7 @@ public class EmojiPage: SearchPage {
     }
 
 
-    public override void initialize() {
+    public override async void initialize() {
         category_flowboxes = new Gtk.FlowBox[group_labels.length];
         for (var index = 0; index < group_labels.length; index++) {
             var grouped_emojis = emoji_entries[index];
@@ -84,8 +204,6 @@ public class EmojiPage: SearchPage {
         }
     }
 
-    
-
     public Gtk.Button create_button(Object emoji){
         EmojiEntry entry = (EmojiEntry) emoji;
         var label = entry.unicode;
@@ -101,7 +219,6 @@ public class EmojiPage: SearchPage {
     public void result_bind_model(ListModel list_model) {
         main_window.emoji_results.bind_model(list_model, create_button);
     }
-
 
     public override void search(Gtk.Editable t) {
         string search_string = t.get_text();
@@ -152,8 +269,8 @@ public class EmojiPage: SearchPage {
 
 public class QuickCopy : Adw.Application {
     public MainUI main_window;
-    private File data_folder;
-    public SearchPage current_page;
+    public SearchPage[] pages;
+    public uint current_page;
     
     private static QuickCopy _instance;
     public static QuickCopy instance {
@@ -164,10 +281,9 @@ public class QuickCopy : Adw.Application {
         }
     }
 
-  construct {
+    construct {
         application_id = "com.ekstdo.quick-copy";
         flags = ApplicationFlags.DEFAULT_FLAGS;
-        data_folder = File.new_for_path (Environment.get_user_data_dir () + "/quick-copy");
     }
     
 
@@ -182,23 +298,7 @@ public class QuickCopy : Adw.Application {
         }
     }
 
-    async void load_image_folder (File file) {
-        var file_path = file.get_path ();
-
-        if (file_path == null) {
-            warning ("Error: file has no path\n");
-            return;
-        }
-        data_folder = File.new_for_path(file_path);
-        main_window.image_path.buffer.set_text (file_path.data);
-    }
-
-    async void select_image_folder () throws Error {
-        var file_dialog = new Gtk.FileDialog ();
-        var file = yield file_dialog.select_folder (main_window, null);
-
-        load_image_folder.begin (file);
-    }
+    
 
 
     public override void activate() {
@@ -213,18 +313,23 @@ public class QuickCopy : Adw.Application {
 
         main_window.search_bar.grab_focus_without_selecting ();
 
-        load_image_folder.begin (data_folder);
-
-        main_window.image_path_select.clicked.connect (() => select_image_folder ());
-
-        main_window.image_path.buffer.set_text (data_folder.get_path().data);
-
         var gdk_display = Gdk.Display.get_default();
         var clipboard = gdk_display.get_clipboard();
-        current_page = new EmojiPage(main_window, clipboard, "de");
 
-        current_page.initialize();
-        main_window.search_bar.changed.connect((t) => current_page.search(t));
+        pages = new SearchPage[2] {
+            new EmojiPage(main_window, clipboard, "de"),
+            new ImagePage(main_window, clipboard)
+        };
+        current_page = 0;
+        foreach(var page in pages){
+            page.initialize.begin();
+        }
+        main_window.search_bar.changed.connect((t) => pages[current_page].search(t));
+        main_window.tabs.switch_page.connect((p, i) => {
+            if (i < 2)
+                current_page = i;
+        });
+
         load_giphy_icon.begin ();
     }
 
