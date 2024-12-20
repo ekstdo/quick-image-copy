@@ -2,6 +2,8 @@
 
 blueprint_files = files(
     'ui/main.blp',
+    'ui/emojis.blp',
+    'ui/images.blp',
 )
 
 blueprint_target = custom_target('blueprints',

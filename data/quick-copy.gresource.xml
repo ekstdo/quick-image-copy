@@ -2,6 +2,8 @@
 <gresources>
   <gresource prefix="/com/ekstdo/quick-copy/">
     <file compressed="true">ui/main.ui</file>
+    <file compressed="true">ui/emojis.ui</file>
+    <file compressed="true">ui/images.ui</file>
   </gresource>
 
   <gresource prefix="/unicode/icons/">

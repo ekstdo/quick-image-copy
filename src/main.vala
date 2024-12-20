@@ -29,7 +29,7 @@ public class ImagePage: SearchPage {
         this.search_results = new ListStore(typeof(ImageEntry));
     }
 
-    async void load_image_folder (File file) {
+    async void load_images_folder (File file) {
         var file_path = file.get_path ();
 
         if (file_path == null) {
@@ -37,11 +37,10 @@ public class ImagePage: SearchPage {
             return;
         }
         data = load_image_entries(file_path + "/imgs");
-        category_flowboxes = new Gee.TreeMap<string, Gtk.FlowBox>();
         data_folder = File.new_for_path(file_path);
-        main_window.image_path.buffer.set_text (file_path.data);
+        main_window.images.path.buffer.set_text (file_path.data);
 
-        remove_children(main_window.image_categories);
+        remove_children(main_window.images.categories);
         foreach (var entries in data) {
             category_flowboxes[entries.key] = new Gtk.FlowBox() {
                 max_children_per_line = 10
@@ -55,19 +54,19 @@ public class ImagePage: SearchPage {
                 child = category_flowboxes[entries.key]
             };
 
-            main_window.image_categories.append(expander);
+            main_window.images.categories.append(expander);
         }
 
-        main_window.image_results.bind_model(search_results, create_button);
-        main_window.image_results.child_activated.connect((child) => select(child.get_index(), null));
+        main_window.images.results.bind_model(search_results, create_button);
+        main_window.images.results.child_activated.connect((child) => select(child.get_index(), null));
     }
 
     public Gtk.Widget create_button(Object image){
         ImageEntry entry = (ImageEntry) image;
         var child = new Gtk.FlowBoxChild();
         var texture = Gdk.Texture.for_pixbuf(entry.image);
-        Gtk.Image image_widget = new Gtk.Image.from_paintable(texture);
-        child.child = image_widget;
+        Gtk.Image images_widget = new Gtk.Image.from_paintable(texture);
+        child.child = images_widget;
 
         var entry_controller = new Gtk.EventControllerMotion();
         entry_controller.enter.connect((x, y) => hover(entry));
@@ -106,7 +105,7 @@ public class ImagePage: SearchPage {
 
     public Gtk.FlowBox selected_flowbox(string? category_name) {
         if (category_name == null) {
-            return main_window.emoji_results;
+            return main_window.images.results;
         }
         return category_flowboxes[category_name];
     }
@@ -127,28 +126,34 @@ public class ImagePage: SearchPage {
         hover_by_index();
     }
 
-    async void select_image_folder () throws Error {
+    async void select_images_folder () throws Error {
         var file_dialog = new Gtk.FileDialog ();
         var file = yield file_dialog.select_folder (main_window, null);
 
-        load_image_folder.begin (file);
+        load_images_folder.begin (file);
     }
 
     public override async void initialize() {
         data_folder = File.new_for_path (Environment.get_user_data_dir () + "/quick-copy");
-        load_image_folder(data_folder);
-        main_window.image_path_select.clicked.connect (() => select_image_folder ());
-        main_window.image_path.buffer.set_text (data_folder.get_path().data);
+        category_flowboxes = new Gee.TreeMap<string, Gtk.FlowBox>();
+        load_images_folder.begin(data_folder);
+        main_window.images.path_select.clicked.connect (() => select_images_folder ());
+        main_window.images.path.buffer.set_text (data_folder.get_path().data);
+
+        main_window.images.width.text = "100";
+        main_window.images.height.text = "100";
+
+
     }
 
 
     public override void search(Gtk.Editable t) {
         string search_string = t.get_text();
         if (((Gtk.Entry) t).buffer.length > 0) {
-            main_window.image_categories.visible = false;
-            main_window.image_results.visible = true;
+            main_window.images.categories.visible = false;
+            main_window.images.results.visible = true;
 
-            main_window.image_results.bind_model(new ListStore(typeof(ImageEntry)), create_button);
+            main_window.images.results.bind_model(new ListStore(typeof(ImageEntry)), create_button);
             search_results.remove_all();
             string deduped = dedup(search_string);
             foreach(var entry in data){
@@ -178,11 +183,13 @@ public class ImagePage: SearchPage {
                 return (score_a > score_b) ? -1 : (score_a == score_b) ? 0 : 1;
             });
             search_results.splice(show_first_n_results, search_results.n_items - show_first_n_results, new ImageEntry[0]);
-            main_window.image_results.bind_model(search_results, create_button);
+            main_window.images.results.bind_model(search_results, create_button);
+            searching = true;
         } else {
-            main_window.image_categories.visible = true;
-            main_window.image_results.visible = false;
+            main_window.images.categories.visible = true;
+            main_window.images.results.visible = false;
             search_results.remove_all();
+            searching = false;
         }
     }
 
@@ -201,13 +208,17 @@ public class ImagePage: SearchPage {
         if (selected_index != -1 && !overwrite) {
             return;
         }
-        main_window.image_label.set_text(entry.label);
-        remove_children(main_window.emoji_tags);
+        main_window.images.label.set_text(entry.label);
+        remove_children(main_window.images.tags);
+        if (entry.tags != null) 
         foreach (var tag in entry.tags) {
             var tag_label = new Gtk.Label(tag);
-            main_window.image_tags.append(tag_label);
+            main_window.images.tags.append(tag_label);
         }
-        main_window.image_score.set_text(score_map[entry.path].to_string());
+        if (searching)
+          main_window.images.score.set_text(score_map[entry.path].to_string());
+        else
+          main_window.images.score.set_text("");
     }
 }
 
@@ -256,17 +267,17 @@ public class EmojiPage: SearchPage {
             var copy_index = index;
             category_flowboxes[index].child_activated.connect((child) => select(child.get_index(), copy_index));
             expander.child = category_flowboxes[index];
-            main_window.emoji_stuff.append(expander);
+            main_window.emojis.display.append(expander);
         }
 
         this.result_bind_model(search_results);
-        main_window.emoji_results.child_activated.connect((child) => select(child.get_index(), -1));
-        main_window.emoji_variants.bind_model(variants, create_variant);
+        main_window.emojis.results.child_activated.connect((child) => select(child.get_index(), -1));
+        main_window.emojis.variants.bind_model(variants, create_variant);
     }
 
     public Gtk.FlowBox selected_flowbox(int index) {
         if (index == -1) {
-            return main_window.emoji_results;
+            return main_window.emojis.results;
         }
         return category_flowboxes[index];
     }
@@ -302,13 +313,13 @@ public class EmojiPage: SearchPage {
         if (selected_index != -1 && !overwrite) {
             return;
         }
-        main_window.emoji_label.set_text(entry.label);
-        remove_children(main_window.emoji_tags);
+        main_window.emojis.label.set_text(entry.label);
+        remove_children(main_window.emojis.tags);
         foreach (var tag in entry.tags) {
             var tag_label = new Gtk.Label(tag);
-            main_window.emoji_tags.append(tag_label);
+            main_window.emojis.tags.append(tag_label);
         }
-        main_window.emoji_score.set_text(score_map[entry.unicode].to_string());
+        main_window.emojis.score.set_text(score_map[entry.unicode].to_string());
         variants.remove_all();
         if (entry.skins != null) {
             foreach (var skin in entry.skins)
@@ -370,7 +381,7 @@ public class EmojiPage: SearchPage {
     }
 
     public void result_bind_model(ListModel list_model) {
-        main_window.emoji_results.bind_model(list_model, (obj) => create_button(obj, -1));
+        main_window.emojis.results.bind_model(list_model, (obj) => create_button(obj, -1));
     }
 
     public void calc_search_results(string search_string){
@@ -411,16 +422,16 @@ public class EmojiPage: SearchPage {
         deselect();
         if (((Gtk.Entry) t).buffer.length > 0) {
             searching = true;
-            main_window.emoji_stuff.visible = false;
-            main_window.emoji_results.visible = true;
+            main_window.emojis.display.visible = false;
+            main_window.emojis.results.visible = true;
 
             this.result_bind_model(new ListStore(typeof(EmojiEntry)));
             calc_search_results(search_string);
             this.result_bind_model(search_results);
         } else {
             searching = false;
-            main_window.emoji_stuff.visible = true;
-            main_window.emoji_results.visible = false;
+            main_window.emojis.display.visible = true;
+            main_window.emojis.results.visible = false;
             search_results.remove_all();
         }
     }
@@ -449,8 +460,8 @@ public class QuickCopy : Adw.Application {
 
     public async void load_giphy_icon() {
         try {
-            Bytes image_bytes = yield get_image_bytes (GIPHY_ICON);
-            main_window.giphy_icon.paintable = Gdk.Texture.from_bytes (image_bytes);
+            Bytes images_bytes = yield get_image_bytes (GIPHY_ICON);
+            main_window.giphy_icon.paintable = Gdk.Texture.from_bytes (images_bytes);
         } catch (Error e) {
             critical (e.message);
             // removes the giphy page, when not avaialable

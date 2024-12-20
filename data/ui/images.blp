@@ -1,0 +1,131 @@
+using Gtk 4.0;
+
+template $ImageTab : Box {
+  orientation: vertical;
+
+  Box config {
+    orientation: horizontal;
+
+    Entry path {}
+
+    Button path_select {
+      label: _("Select Folder…");
+      halign: center;
+    }
+  }
+
+  ScrolledWindow {
+    hscrollbar-policy: never;
+    propagate-natural-height: true;
+    min-content-height: 400;
+    max-content-height: 600;
+    Box{
+      orientation: vertical;
+      Box categories {
+        orientation: vertical;
+      }
+      FlowBox results {
+      }
+    }
+  }
+
+  Grid {
+    Box {
+      layout {
+        row: 0;
+        column: 0;
+      }
+
+      Label {
+        label: "width:";
+      }
+
+      SpinButton width {
+        adjustment: Adjustment {
+          value: 100;
+          lower: 1;
+          step-increment: 1;
+          upper: 1024;
+        };
+      }
+    }
+
+    Box {
+      layout {
+        row: 0;
+        column: 1;
+      }
+
+      Label {
+        label: "height:";
+      }
+
+      SpinButton height {
+        value: 1;
+        adjustment: Adjustment {
+          value: 100;
+          lower: 1;
+          upper: 1024;
+          step-increment: 1;
+        };
+      }
+    }
+
+    Box {
+      layout {
+        row: 1;
+        column: 0;
+      }
+
+      Label {
+        label: "keep aspect ratio:";
+      }
+
+      DropDown aspect_ratio {
+          model: StringList{strings[
+              "no",
+              "keep width",
+              "keep height"
+          ]};
+      }
+    }
+
+  }
+
+  Box {
+    orientation: horizontal;
+    Box {
+      orientation: vertical;
+
+      Box {
+        Label {
+          label: "Label: ";
+        }
+
+        Label label {
+        }
+      }
+
+      Box {
+        Label {
+          label: "Tags: ";
+        }
+
+        Box tags {
+        }
+      }
+
+      Box {
+        Label {
+            label: "Score: ";
+        }
+
+        Label score {}
+      }
+    }
+
+    Picture preview {}
+  }
+  
+  
+}

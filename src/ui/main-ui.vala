@@ -1,3 +1,59 @@
+[GtkTemplate (ui = "/com/ekstdo/quick-copy/ui/images.ui")]
+public class ImageTab : Gtk.Box {
+    [GtkChild]
+    public unowned Gtk.Button path_select;
+
+    [GtkChild]
+    public unowned Gtk.Entry path;
+
+    [GtkChild]
+    public unowned Gtk.Box categories;
+
+    [GtkChild]
+    public unowned Gtk.FlowBox results;
+
+    [GtkChild]
+    public unowned Gtk.SpinButton width;
+
+    [GtkChild]
+    public unowned Gtk.SpinButton height;
+
+    [GtkChild]
+    public unowned Gtk.DropDown aspect_ratio;
+
+    [GtkChild]
+    public unowned Gtk.Label label;
+
+    [GtkChild]
+    public unowned Gtk.Box tags;
+
+    [GtkChild]
+    public unowned Gtk.Label score;
+
+
+}
+
+[GtkTemplate (ui = "/com/ekstdo/quick-copy/ui/emojis.ui")]
+public class EmojiTab : Gtk.Box {
+    [GtkChild]
+    public unowned Gtk.Box display;
+
+    [GtkChild]
+    public unowned Gtk.FlowBox results;
+
+    [GtkChild]
+    public unowned Gtk.Label label;
+
+    [GtkChild]
+    public unowned Gtk.Label score;
+
+    [GtkChild]
+    public unowned Gtk.Box tags;
+
+    [GtkChild]
+    public unowned Gtk.FlowBox variants;
+}
+
 [GtkTemplate (ui = "/com/ekstdo/quick-copy/ui/main.ui")]
 public class MainUI : Adw.Window {
     [GtkChild]
@@ -10,52 +66,10 @@ public class MainUI : Adw.Window {
     public unowned Gtk.Notebook tabs;
 
     [GtkChild]
-    public unowned Gtk.Button image_path_select;
+    public unowned EmojiTab emojis;
 
     [GtkChild]
-    public unowned Gtk.Entry image_path;
-
-    [GtkChild]
-    public unowned Gtk.Box emoji_stuff;
-
-    [GtkChild]
-    public unowned Gtk.FlowBox emoji_results;
-
-    [GtkChild]
-    public unowned Gtk.Label emoji_label;
-
-    [GtkChild]
-    public unowned Gtk.Label emoji_score;
-
-    [GtkChild]
-    public unowned Gtk.Box emoji_tags;
-
-    [GtkChild]
-    public unowned Gtk.FlowBox emoji_variants;
-
-    [GtkChild]
-    public unowned Gtk.Box image_categories;
-
-    [GtkChild]
-    public unowned Gtk.FlowBox image_results;
-
-    [GtkChild]
-    public unowned Gtk.SpinButton image_width;
-
-    [GtkChild]
-    public unowned Gtk.SpinButton image_height;
-
-    [GtkChild]
-    public unowned Gtk.DropDown image_aspect_ratio;
-
-    [GtkChild]
-    public unowned Gtk.Label image_label;
-
-    [GtkChild]
-    public unowned Gtk.Box image_tags;
-
-    [GtkChild]
-    public unowned Gtk.Label image_score;
+    public unowned ImageTab images;
 
     public MainUI(Gtk.Application app) {
         Object(application: app);

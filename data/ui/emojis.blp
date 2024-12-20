@@ -1,0 +1,66 @@
+
+using Gtk 4.0;
+
+template $EmojiTab : Box {
+  orientation: vertical;
+
+  ScrolledWindow {
+    hscrollbar-policy: never;
+    propagate-natural-height: true;
+    min-content-height: 400;
+    max-content-height: 600;
+
+    Box {
+      orientation: vertical;
+
+      Box display {
+        orientation: vertical;
+      }
+
+      FlowBox results {
+        visible: false;
+      }
+    }
+  }
+
+  Box {
+    orientation: vertical;
+
+    Box {
+      Label {
+        label: "Label: ";
+      }
+
+      Label label {
+      }
+    }
+
+    Box {
+      Label {
+        label: "Tags: ";
+      }
+
+      Box tags {
+      }
+    }
+
+
+    Box {
+      orientation: vertical;
+      Label {
+        label: "Variants: ";
+      }
+
+      FlowBox variants {
+      }
+    }
+
+    Box {
+      Label {
+          label: "Score: ";
+      }
+
+      Label score {}
+    }
+  }
+}
