@@ -1,13 +1,13 @@
 private const string GIPHY_ICON = "https://giphy.com/static/img/favicon.png";
 
-
-
 public errordomain EmojiConfigError {
     UNKNOWN_LOCALE,
     INVALID_FORMAT
 }
 
 public abstract class SearchPage {
+    public int selected_index = -1;
+    public bool searching = false;
     public abstract async void initialize();
     public abstract void search(Gtk.Editable t);
 }
@@ -17,9 +17,10 @@ public class ImagePage: SearchPage {
     private File data_folder;
     Gdk.Clipboard clipboard;
     public Gee.TreeMap<string, ObservableArrayList<ImageEntry>> data;
-    public Gtk.FlowBox[] category_flowboxes;
+    public Gee.TreeMap<string, Gtk.FlowBox> category_flowboxes;
     Gee.TreeMap<string, int> score_map;
     ListStore search_results;
+    public string? selected_category = null;
     int show_first_n_results = 100;
 
     public ImagePage(MainUI main_window, Gdk.Clipboard clipboard){
@@ -27,7 +28,6 @@ public class ImagePage: SearchPage {
         this.clipboard = clipboard;
         this.search_results = new ListStore(typeof(ImageEntry));
     }
-
 
     async void load_image_folder (File file) {
         var file_path = file.get_path ();
@@ -37,39 +37,94 @@ public class ImagePage: SearchPage {
             return;
         }
         data = load_image_entries(file_path + "/imgs");
-        category_flowboxes = new Gtk.FlowBox[data.size];
+        category_flowboxes = new Gee.TreeMap<string, Gtk.FlowBox>();
         data_folder = File.new_for_path(file_path);
         main_window.image_path.buffer.set_text (file_path.data);
 
         remove_children(main_window.image_categories);
-        int index = 0;
         foreach (var entries in data) {
-            category_flowboxes[index] = new Gtk.FlowBox() {
+            category_flowboxes[entries.key] = new Gtk.FlowBox() {
                 max_children_per_line = 10
             };
-            category_flowboxes[index].bind_model(entries.value, create_button);
+            category_flowboxes[entries.key].bind_model(entries.value, create_button);
+            var copy_index = entries.key;
+            category_flowboxes[copy_index].child_activated.connect((child) => select(child.get_index(), copy_index));
 
             var expander = new Gtk.Expander(entries.key) {
                 expanded = true,
-                child = category_flowboxes[index]
+                child = category_flowboxes[entries.key]
             };
 
             main_window.image_categories.append(expander);
-            index += 1;
         }
 
         main_window.image_results.bind_model(search_results, create_button);
+        main_window.image_results.child_activated.connect((child) => select(child.get_index(), null));
     }
 
-    public Gtk.Button create_button(Object image){
+    public Gtk.Widget create_button(Object image){
         ImageEntry entry = (ImageEntry) image;
-        var button = new Gtk.Button();
+        var child = new Gtk.FlowBoxChild();
         var texture = Gdk.Texture.for_pixbuf(entry.image);
         Gtk.Image image_widget = new Gtk.Image.from_paintable(texture);
-        button.set_child(image_widget);
-        button.clicked.connect(() => clipboard.set_texture(texture) );
+        child.child = image_widget;
 
-        return button;
+        var entry_controller = new Gtk.EventControllerMotion();
+        entry_controller.enter.connect((x, y) => hover(entry));
+        child.add_controller(entry_controller);
+        var gesture_click = new Gtk.GestureClick();
+        gesture_click.released.connect((n, x, y) => {
+            if (n > 1) {
+                clipboard.set_texture(texture);
+            }
+        });
+
+        var keyboard_controller = new Gtk.EventControllerKey();
+        keyboard_controller.key_pressed.connect((k, c, s) => {
+            stdout.printf("%d %d\n", (int) k, (int) c);
+            if (c == 36) { // Enter
+                clipboard.set_texture(texture);
+                return true;
+            } else if (k >= 48 && k < 122) {
+                main_window.search_bar.grab_focus_without_selecting ();
+                var string_builder = new StringBuilder();
+                string_builder.append_c((char) k);
+                main_window.search_bar.buffer.insert_text(main_window.search_bar.buffer.get_length(), string_builder.str.data);
+                main_window.search_bar.set_position(-1);
+                return true;
+            } else if (c == 9) {
+                deselect();
+                return true;
+            }
+            return false;
+            });
+        child.add_controller(gesture_click);
+        child.add_controller(keyboard_controller);
+
+        return child;
+    }
+
+    public Gtk.FlowBox selected_flowbox(string? category_name) {
+        if (category_name == null) {
+            return main_window.emoji_results;
+        }
+        return category_flowboxes[category_name];
+    }
+
+    public void deselect() {
+        if (selected_index == -1) return;
+        var flowbox = selected_flowbox(selected_category);
+        flowbox.selected_foreach((box, child) => box.unselect_child(child));
+        selected_index = -1;
+    }
+
+    public void select(int index, string? category) {
+        if (category != selected_category) {
+            deselect();
+        }
+        selected_index = index;
+        selected_category = category;
+        hover_by_index();
     }
 
     async void select_image_folder () throws Error {
@@ -122,13 +177,37 @@ public class ImagePage: SearchPage {
                 }
                 return (score_a > score_b) ? -1 : (score_a == score_b) ? 0 : 1;
             });
-            search_results.splice(show_first_n_results, search_results.n_items - show_first_n_results, new EmojiEntry[0]);
+            search_results.splice(show_first_n_results, search_results.n_items - show_first_n_results, new ImageEntry[0]);
             main_window.image_results.bind_model(search_results, create_button);
         } else {
             main_window.image_categories.visible = true;
             main_window.image_results.visible = false;
             search_results.remove_all();
         }
+    }
+
+    public void hover_by_index(){
+        if (selected_index == -1) {
+            return;
+        }
+        if (selected_category == null) {
+            hover((ImageEntry) search_results.get_item(selected_index), true);
+        } else {
+            hover((ImageEntry) data[selected_category].get_item(selected_index), true);
+        }
+    }
+
+    public void hover(ImageEntry entry, bool overwrite = false) {
+        if (selected_index != -1 && !overwrite) {
+            return;
+        }
+        main_window.image_label.set_text(entry.label);
+        remove_children(main_window.emoji_tags);
+        foreach (var tag in entry.tags) {
+            var tag_label = new Gtk.Label(tag);
+            main_window.image_tags.append(tag_label);
+        }
+        main_window.image_score.set_text(score_map[entry.path].to_string());
     }
 }
 
@@ -140,6 +219,7 @@ public class EmojiPage: SearchPage {
     uint show_first_n_results = 200;
     private Gee.TreeMap<string, int> score_map;
     private string _locale;
+    public int selected_category = -1;
     public string locale {
         get { return _locale; }
         set {
@@ -161,6 +241,7 @@ public class EmojiPage: SearchPage {
     }
 
 
+
     public override async void initialize() {
         category_flowboxes = new Gtk.FlowBox[group_labels.length];
         for (var index = 0; index < group_labels.length; index++) {
@@ -171,25 +252,56 @@ public class EmojiPage: SearchPage {
             category_flowboxes[index] = new Gtk.FlowBox() {
                 max_children_per_line = 10
             };
-            category_flowboxes[index].bind_model(grouped_emojis, create_button);
+            category_flowboxes[index].bind_model(grouped_emojis, (obj) => create_button(obj, index));
+            var copy_index = index;
+            category_flowboxes[index].child_activated.connect((child) => select(child.get_index(), copy_index));
             expander.child = category_flowboxes[index];
             main_window.emoji_stuff.append(expander);
         }
 
         this.result_bind_model(search_results);
+        main_window.emoji_results.child_activated.connect((child) => select(child.get_index(), -1));
         main_window.emoji_variants.bind_model(variants, create_variant);
     }
-    
-    public Gtk.Button create_variant(Object emoji){
-        EmojiEntry entry = (EmojiEntry) emoji;
-        var label = entry.unicode;
-        var button = new Gtk.Button.with_label(label);
 
-        button.clicked.connect(() => clipboard.set_text(label) );
-        return button;
+    public Gtk.FlowBox selected_flowbox(int index) {
+        if (index == -1) {
+            return main_window.emoji_results;
+        }
+        return category_flowboxes[index];
     }
 
-    public void select(EmojiEntry entry) {
+    public void deselect() {
+        if (selected_index == -1) return;
+        var flowbox = selected_flowbox(selected_category);
+        flowbox.selected_foreach((box, child) => box.unselect_child(child));
+        selected_index = -1;
+    }
+
+    public void select(int index, int category) {
+        if (category != selected_category) {
+            deselect();
+        }
+        selected_index = index;
+        selected_category = category;
+        hover_by_index();
+    }
+
+    public void hover_by_index(){
+        if (selected_index == -1) {
+            return;
+        }
+        if (selected_category == -1) {
+            hover((EmojiEntry) search_results.get_item(selected_index), true);
+        } else {
+            hover((EmojiEntry) emoji_entries[selected_category].get_item(selected_index), true);
+        }
+    }
+
+    public void hover(EmojiEntry entry, bool overwrite = false) {
+        if (selected_index != -1 && !overwrite) {
+            return;
+        }
         main_window.emoji_label.set_text(entry.label);
         remove_children(main_window.emoji_tags);
         foreach (var tag in entry.tags) {
@@ -204,61 +316,109 @@ public class EmojiPage: SearchPage {
         }
     }
 
-    public Gtk.Button create_button(Object emoji){
+    public Gtk.Widget create_button(Object emoji, int category = -1){
+        EmojiEntry entry = (EmojiEntry) emoji;
+        var label_text = entry.unicode;
+        // var button = new Gtk.Button.with_label(label);
+        var label = new Gtk.Label(label_text);
+        var child = new Gtk.FlowBoxChild();
+        child.child = label;
+
+        var entry_controller = new Gtk.EventControllerMotion();
+        entry_controller.enter.connect((x, y) => hover(entry));
+        child.add_controller(entry_controller);
+        var gesture_click = new Gtk.GestureClick();
+        gesture_click.released.connect((n, x, y) => {
+            if (n > 1) {
+                clipboard.set_text(label_text);
+            }
+        });
+
+        var keyboard_controller = new Gtk.EventControllerKey();
+        keyboard_controller.key_pressed.connect((k, c, s) => {
+            stdout.printf("%d %d\n", (int) k, (int) c);
+            if (c == 36) { // Enter
+                clipboard.set_text(label_text);
+                return true;
+            } else if (k >= 48 && k < 122) {
+                main_window.search_bar.grab_focus_without_selecting ();
+                var string_builder = new StringBuilder();
+                string_builder.append_c((char) k);
+                main_window.search_bar.buffer.insert_text(main_window.search_bar.buffer.get_length(), string_builder.str.data);
+                main_window.search_bar.set_position(-1);
+                return true;
+            } else if (c == 9) {
+                deselect();
+                return true;
+            }
+            return false;
+            });
+        child.add_controller(gesture_click);
+        child.add_controller(keyboard_controller);
+        return child;
+    }
+
+    public Gtk.Button create_variant(Object emoji){
         EmojiEntry entry = (EmojiEntry) emoji;
         var label = entry.unicode;
         var button = new Gtk.Button.with_label(label);
 
-        var entry_controller = new Gtk.EventControllerMotion();
-        entry_controller.enter.connect((x, y) => select(entry));
-        button.add_controller(entry_controller);
-        button.clicked.connect(() => clipboard.set_text(label) );
+        button.clicked.connect(() => {
+            clipboard.set_text(label);
+        });
         return button;
     }
 
     public void result_bind_model(ListModel list_model) {
-        main_window.emoji_results.bind_model(list_model, create_button);
+        main_window.emoji_results.bind_model(list_model, (obj) => create_button(obj, -1));
+    }
+
+    public void calc_search_results(string search_string){
+        search_results.remove_all();
+        string deduped = dedup(search_string);
+        foreach(var list in emoji_entries){
+            foreach(var item in list){
+                if (item.match(deduped))
+                    search_results.append(item);
+            }
+        }
+        score_map = new Gee.TreeMap<string, int>((a, b) => strcmp(a, b));
+        search_results.sort((a, b) => {
+
+            EmojiEntry a_ = (EmojiEntry) a;
+            int score_a;
+            if (score_map.has_key(a_.unicode)) {
+                score_a = score_map[a_.unicode];
+            } else {
+                score_a = a_.score(search_string);
+                score_map[a_.unicode] = score_a;
+            }
+            EmojiEntry b_ = (EmojiEntry) b;
+            int score_b;
+            if (score_map.has_key(b_.unicode)) {
+                score_b = score_map[b_.unicode];
+            } else {
+                score_b = b_.score(search_string);
+                score_map[b_.unicode] = score_b;
+            }
+            return (score_a > score_b) ? -1 : (score_a == score_b) ? 0 : 1;
+        });
+        search_results.splice(show_first_n_results, search_results.n_items - show_first_n_results, new EmojiEntry[0]);
     }
 
     public override void search(Gtk.Editable t) {
         string search_string = t.get_text();
+        deselect();
         if (((Gtk.Entry) t).buffer.length > 0) {
+            searching = true;
             main_window.emoji_stuff.visible = false;
             main_window.emoji_results.visible = true;
 
             this.result_bind_model(new ListStore(typeof(EmojiEntry)));
-            search_results.remove_all();
-            string deduped = dedup(search_string);
-            foreach(var list in emoji_entries){
-                foreach(var item in list){
-                    if (item.match(deduped))
-                        search_results.append(item);
-                }
-            }
-            score_map = new Gee.TreeMap<string, int>((a, b) => strcmp(a, b));
-            search_results.sort((a, b) => {
-
-                EmojiEntry a_ = (EmojiEntry) a;
-                int score_a;
-                if (score_map.has_key(a_.unicode)) {
-                    score_a = score_map[a_.unicode];
-                } else {
-                    score_a = a_.score(search_string);
-                    score_map[a_.unicode] = score_a;
-                }
-                EmojiEntry b_ = (EmojiEntry) b;
-                int score_b;
-                if (score_map.has_key(b_.unicode)) {
-                    score_b = score_map[b_.unicode];
-                } else {
-                    score_b = b_.score(search_string);
-                    score_map[b_.unicode] = score_b;
-                }
-                return (score_a > score_b) ? -1 : (score_a == score_b) ? 0 : 1;
-            });
-            search_results.splice(show_first_n_results, search_results.n_items - show_first_n_results, new EmojiEntry[0]);
+            calc_search_results(search_string);
             this.result_bind_model(search_results);
         } else {
+            searching = false;
             main_window.emoji_stuff.visible = true;
             main_window.emoji_results.visible = false;
             search_results.remove_all();
@@ -317,7 +477,7 @@ public class QuickCopy : Adw.Application {
         var clipboard = gdk_display.get_clipboard();
 
         pages = new SearchPage[2] {
-            new EmojiPage(main_window, clipboard, "de"),
+            new EmojiPage(main_window, clipboard, "en"),
             new ImagePage(main_window, clipboard)
         };
         current_page = 0;

@@ -227,7 +227,7 @@ public int max3(int i, int j, int k) {
     return i > j? (i > k? i: k): (j > k? j: k);
 }
 
-public int[] needleman_wunsch_score(owned string x, owned string y, int insert_cost = -1, int delete_cost = -1, int edit_cost = -2, int match_cost = 1) {
+public int[] needleman_wunsch_score(owned string x, owned string y, int insert_cost = -10, int delete_cost = -10, int edit_cost = -20, int match_cost = 10) {
     
     var y_len = y.char_count ();
     var score = new int[y_len + 1];

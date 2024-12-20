@@ -1,3 +1,15 @@
+public int needleman_with_back(int[] arr) {
+    var val = arr[arr.length - 1];
+    var back_cost = 0;
+    for (var i = arr.length - 2; i > 0; i--) {
+        back_cost -= 3;
+        if (back_cost + arr[i] > val) {
+            val = arr[i] + back_cost;
+        }
+    }
+    return val;
+}
+
 public class Entry : Object {
     public string label { get; set; }
     public string[] tags { get; set; }
@@ -17,17 +29,16 @@ public class Entry : Object {
     }
 
     public int score(string search) {
-        var label_score_row = needleman_wunsch_score(search, label);
-        var label_score = label_score_row[label_score_row.length - 1];
+        var label_score = needleman_with_back(needleman_wunsch_score(search, label));
         var result = label_score;
         foreach (var tag in tags) {
             // stdout.printf("tag cmp %s with %s\n", tag, search);
-            var temp = needleman_wunsch_score(search, tag);
-            if (temp[temp.length - 1] + label_score > result) {
-                result = temp[temp.length - 1] + label_score;
+            var temp = needleman_with_back(needleman_wunsch_score(tag, search));
+            if (temp > result) {
+                result = temp;
             }
         }
-        return result + label_score;
+        return result;
     }
 }
 

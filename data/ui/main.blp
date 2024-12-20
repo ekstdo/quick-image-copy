@@ -118,9 +118,98 @@ template $MainUI : Adw.Window {
         }
 
         Grid {
-          
+          Box {
+            layout {
+              row: 0;
+              column: 0;
+            }
+
+            Label {
+              label: "width:";
+            }
+
+            SpinButton image_width {
+              adjustment: Adjustment {
+                value: 100;
+                lower: 1;
+                step-increment: 1;
+                upper: 1024;
+              };
+            }
+          }
+
+          Box {
+            layout {
+              row: 0;
+              column: 1;
+            }
+
+            Label {
+              label: "height:";
+            }
+
+            SpinButton image_height {
+              value: 1;
+              adjustment: Adjustment {
+                value: 100;
+                lower: 1;
+                upper: 1024;
+                step-increment: 1;
+              };
+            }
+          }
+
+          Box {
+            layout {
+              row: 1;
+              column: 0;
+            }
+
+            Label {
+              label: "keep aspect ratio:";
+            }
+
+            DropDown image_aspect_ratio {
+                model: StringList{strings[
+                    "no",
+                    "keep width",
+                    "keep height"
+                ]};
+            }
+          }
+
         }
 
+        Box {
+          orientation: vertical;
+
+          Box {
+            Label {
+              label: "Label: ";
+            }
+
+            Label image_label {
+            }
+          }
+
+          Box {
+            Label {
+              label: "Tags: ";
+            }
+
+            Box image_tags {
+            }
+          }
+
+
+          Box {
+            Label {
+                label: "Score: ";
+            }
+
+            Label image_score {}
+          }
+        }
         
       }
 

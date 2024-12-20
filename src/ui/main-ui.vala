@@ -39,6 +39,24 @@ public class MainUI : Adw.Window {
     [GtkChild]
     public unowned Gtk.FlowBox image_results;
 
+    [GtkChild]
+    public unowned Gtk.SpinButton image_width;
+
+    [GtkChild]
+    public unowned Gtk.SpinButton image_height;
+
+    [GtkChild]
+    public unowned Gtk.DropDown image_aspect_ratio;
+
+    [GtkChild]
+    public unowned Gtk.Label image_label;
+
+    [GtkChild]
+    public unowned Gtk.Box image_tags;
+
+    [GtkChild]
+    public unowned Gtk.Label image_score;
+
     public MainUI(Gtk.Application app) {
         Object(application: app);
     }
