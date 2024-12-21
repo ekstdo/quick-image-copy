@@ -22,13 +22,22 @@ public class ImageTab : Gtk.Box {
     public unowned Gtk.DropDown aspect_ratio;
 
     [GtkChild]
+    public unowned Gtk.DropDown interpolation;
+
+    [GtkChild]
     public unowned Gtk.Label label;
 
     [GtkChild]
     public unowned Gtk.Box tags;
 
     [GtkChild]
+    public unowned Gtk.Box info;
+
+    [GtkChild]
     public unowned Gtk.Label score;
+
+    [GtkChild]
+    public unowned Gtk.Image preview;
 
 
 }

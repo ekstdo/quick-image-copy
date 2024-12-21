@@ -3,11 +3,11 @@
 
 # Roadmap
 
-- [ ] Port to FlowboxEntry
+- [x] Port to FlowboxEntry
 
 - [ ] Filter categories
 
-- [ ] Downscale
+- [x] Downscale
 
 - [ ] Show Info in other categories
 

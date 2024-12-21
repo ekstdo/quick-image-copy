@@ -74,7 +74,7 @@ public class ImagePage: SearchPage {
         var gesture_click = new Gtk.GestureClick();
         gesture_click.released.connect((n, x, y) => {
             if (n > 1) {
-                clipboard.set_texture(texture);
+                clipboard.set_texture(Gdk.Texture.for_pixbuf(rescale(entry.image)));
             }
         });
 
@@ -82,7 +82,7 @@ public class ImagePage: SearchPage {
         keyboard_controller.key_pressed.connect((k, c, s) => {
             stdout.printf("%d %d\n", (int) k, (int) c);
             if (c == 36) { // Enter
-                clipboard.set_texture(texture);
+                clipboard.set_texture(Gdk.Texture.for_pixbuf(rescale(entry.image)));
                 return true;
             } else if (k >= 48 && k < 122) {
                 main_window.search_bar.grab_focus_without_selecting ();
@@ -96,7 +96,7 @@ public class ImagePage: SearchPage {
                 return true;
             }
             return false;
-            });
+        });
         child.add_controller(gesture_click);
         child.add_controller(keyboard_controller);
 
@@ -140,8 +140,17 @@ public class ImagePage: SearchPage {
         main_window.images.path_select.clicked.connect (() => select_images_folder ());
         main_window.images.path.buffer.set_text (data_folder.get_path().data);
 
-        main_window.images.width.text = "100";
-        main_window.images.height.text = "100";
+        main_window.images.width.value = 50;
+        main_window.images.width.value_changed.connect(() => {
+            hover_by_index();
+        });
+        main_window.images.height.value = 50;
+        main_window.images.height.value_changed.connect(() => {
+            stdout.printf("yo\n");
+            hover_by_index();
+        });
+        main_window.images.aspect_ratio.set_selected(2);
+        main_window.images.preview.icon_size = Gtk.IconSize.LARGE;
 
 
     }
@@ -204,6 +213,33 @@ public class ImagePage: SearchPage {
         }
     }
 
+    public Gdk.Pixbuf rescale(Gdk.Pixbuf input) {
+        int width, height;
+        Gdk.InterpType interp_type;
+        string selected_aspect_ratio = (string) main_window.images.aspect_ratio.get_selected_item();
+        string interpolation = (string) main_window.images.interpolation.get_selected_item();
+        if (selected_aspect_ratio == "no"){
+            width = (int) main_window.images.width.value;
+            height = (int) main_window.images.height.value;
+        } else {
+            double ratio = ((double) input.width) / ((double) input.height);
+            if(selected_aspect_ratio == "keep width") {
+                width = (int) main_window.images.width.value;
+                height = (int) (main_window.images.width.value / ratio);
+            } else {
+                width = (int) (main_window.images.height.value * ratio);
+                height = (int) main_window.images.height.value;
+            }
+        } 
+        if (interpolation == "nearest") {
+            interp_type = Gdk.InterpType.NEAREST;
+        } else {
+            interp_type = Gdk.InterpType.BILINEAR;
+        }
+
+        return input.scale_simple(width, height, interp_type);
+    }
+
     public void hover(ImageEntry entry, bool overwrite = false) {
         if (selected_index != -1 && !overwrite) {
             return;
@@ -219,6 +255,12 @@ public class ImagePage: SearchPage {
           main_window.images.score.set_text(score_map[entry.path].to_string());
         else
           main_window.images.score.set_text("");
+
+        Gdk.Pixbuf rescaled = rescale(entry.image);
+        Gdk.Texture texture = Gdk.Texture.for_pixbuf(rescaled);
+        main_window.images.preview.set_from_paintable(texture);
+        main_window.images.preview.pixel_size = rescaled.height;
+        main_window.images.info.height_request = rescaled.height;
     }
 }
 
@@ -369,15 +411,19 @@ public class EmojiPage: SearchPage {
         return child;
     }
 
-    public Gtk.Button create_variant(Object emoji){
+    public Gtk.Widget create_variant(Object emoji){
         EmojiEntry entry = (EmojiEntry) emoji;
         var label = entry.unicode;
-        var button = new Gtk.Button.with_label(label);
+        var child = new Gtk.FlowBoxChild();
+        child.child = new Gtk.Label(label);
 
-        button.clicked.connect(() => {
+        var gesture_click = new Gtk.GestureClick();
+        gesture_click.released.connect((n, x, y) => {
             clipboard.set_text(label);
         });
-        return button;
+        child.add_controller(gesture_click);
+
+        return child;
     }
 
     public void result_bind_model(ListModel list_model) {

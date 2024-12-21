@@ -246,13 +246,6 @@ public int[] needleman_wunsch_score(owned string x, owned string y, int insert_c
         unichar cy;
         int jc = 0;
 
-    /* if (y.contains("„akzeptieren“")){
-        stdout.printf("; %s\t\t\t", x);
-        foreach (var i_ in score) {
-            stdout.printf("%d,", i_);
-        }
-        stdout.printf("\n");
-    }*/
         for (int j = 1; y.get_next_char (ref jc, out cy); j++) {
             bool same = cx == cy;
             temp = max3(
@@ -267,14 +260,6 @@ public int[] needleman_wunsch_score(owned string x, owned string y, int insert_c
             }
         }
     }
-
-    /*if (y.contains("„akzeptieren“")){
-        stdout.printf("%s: \t\t\t", y);
-        foreach (var i in score) {
-            stdout.printf("%d,", i);
-        }
-        stdout.printf("\n");
-    }*/
 
     return score;
 }
@@ -342,3 +327,7 @@ function Hirschberg(X, Y)
     return (Z, W)
 
 */
+
+
+
+
