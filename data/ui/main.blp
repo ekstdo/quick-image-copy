@@ -2,64 +2,79 @@ using Gtk 4.0;
 using Adw 1;
 
 template $MainUI : Adw.Window {
+
+  Adw.Breakpoint {
+    condition ("max-width: 500sp")
+
+    setters {
+      split_view.collapsed: true;
+    }
+  }
+
   Box {
     orientation: vertical;
+    
 
     Adw.HeaderBar {
-      Button button_new_tab {
-        icon-name: "tab-new-symbolic";
-      }
-
-      Button button_overview {
-        icon-name: "view-grid-symbolic";
+      [start]
+      ToggleButton show_sidebar_button {
+        icon-name: "sidebar-show-symbolic";
+        active: bind show_sidebar_button.active;
+        tooltip-text: _("Toggle Sidebar");
       }
 
       [title]
       Entry search_bar {}
     }
 
-    Notebook tabs {
-      $EmojiTab emojis { }
-      [tab]
-      Image {
-        icon-name: "face-smile";
-      }
+    Adw.OverlaySplitView split_view {
+      show-sidebar: bind show_sidebar_button.active;
+      sidebar: Box sidebar {
+      };
 
-      $ImageTab images { }
+      content: Notebook tabs {
+        $EmojiTab emojis { }
+        [tab]
+        Image {
+          icon-name: "face-smile";
+        }
 
-      [tab]
-      Image {
-        icon-name: "image-x-generic";
-      }
+        $ImageTab images { }
 
-      Box giphy_stuff {}
+        [tab]
+        Image {
+          icon-name: "image-x-generic";
+        }
 
-      [tab]
-      Picture giphy_icon {
-        halign: center;
-        valign: center;
-      }
+        Box giphy_stuff {}
 
-      Box unicode_stuff {}
+        [tab]
+        Picture giphy_icon {
+          halign: center;
+          valign: center;
+        }
 
-      [tab]
-      Image {
-        icon-name: "/unicode/icons/icons/unicode_logo.jpg";
-      }
+        Box unicode_stuff {}
 
-      Box history_stuff {}
+        [tab]
+        Image {
+          icon-name: "/unicode/icons/icons/unicode_logo.jpg";
+        }
 
-      [tab]
-      Image {
-        icon-name: "history";
-      }
+        Box history_stuff {}
 
-      Box text_stuff {}
+        [tab]
+        Image {
+          icon-name: "history";
+        }
 
-      [tab]
-      Image {
-        icon-name: "text-x-generic";
-      }
+        Box text_stuff {}
+
+        [tab]
+        Image {
+          icon-name: "text-x-generic";
+        }
+      };
     }
   }
 }

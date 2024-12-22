@@ -80,6 +80,9 @@ public class MainUI : Adw.Window {
     [GtkChild]
     public unowned ImageTab images;
 
+    [GtkChild]
+    public unowned Adw.OverlaySplitView split_view;
+
     public MainUI(Gtk.Application app) {
         Object(application: app);
     }

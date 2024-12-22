@@ -7,26 +7,59 @@ public errordomain EmojiConfigError {
 
 public abstract class SearchPage {
     public int selected_index = -1;
+    public int selected_category = -1;
     public bool searching = false;
     public abstract async void initialize();
     public abstract void search(Gtk.Editable t);
+    public Gtk.Widget sidebar;
+    public Gdk.Clipboard clipboard;
 }
 
-public class ImagePage: SearchPage {
+public abstract class CategorizedSearchPage : SearchPage {
+    public ListStore filter_categories;
+    public string[] category_names;
+    public Gtk.FlowBox[] category_flowboxes;
+    public ListStore search_results;
+    public int show_first_n_results = 100;
+    public abstract void hover_by_index();
+    public abstract void deselect();
+
+    public void select(int index, int category) {
+        if (category != selected_category) {
+            deselect();
+        }
+        selected_index = index;
+        selected_category = category;
+        hover_by_index();
+    }
+}
+
+public class ImagePage: CategorizedSearchPage {
     public MainUI main_window;
     private File data_folder;
-    Gdk.Clipboard clipboard;
-    public Gee.TreeMap<string, ObservableArrayList<ImageEntry>> data;
-    public Gee.TreeMap<string, Gtk.FlowBox> category_flowboxes;
+    public ObservableArrayList<ImageEntry>[] data;
     Gee.TreeMap<string, int> score_map;
-    ListStore search_results;
-    public string? selected_category = null;
-    int show_first_n_results = 100;
+    public Gtk.ListBox sidebar_elem;
 
     public ImagePage(MainUI main_window, Gdk.Clipboard clipboard){
         this.main_window = main_window;
         this.clipboard = clipboard;
         this.search_results = new ListStore(typeof(ImageEntry));
+        this.sidebar_elem = new Gtk.ListBox();
+        this.sidebar = this.sidebar_elem;
+        this.filter_categories = new ListStore(typeof(IndexedT<bool>));
+    }
+
+    void decompose(Gee.TreeMap<string, ObservableArrayList<ImageEntry>> data) {
+        category_names = new string[data.size];
+        category_flowboxes = new Gtk.FlowBox[data.size];
+        this.data = new ObservableArrayList<ImageEntry>[data.size];
+        int index = 0;
+        foreach (var entries in data) {
+            category_names[index] = entries.key;
+            this.data[index] = entries.value;
+            index += 1;
+        }
     }
 
     async void load_images_folder (File file) {
@@ -36,29 +69,46 @@ public class ImagePage: SearchPage {
             warning ("Error: file has no path\n");
             return;
         }
-        data = load_image_entries(file_path + "/imgs");
+        decompose(load_image_entries(file_path + "/imgs"));
         data_folder = File.new_for_path(file_path);
         main_window.images.path.buffer.set_text (file_path.data);
 
         remove_children(main_window.images.categories);
-        foreach (var entries in data) {
-            category_flowboxes[entries.key] = new Gtk.FlowBox() {
+        filter_categories.remove_all();
+        for (var i = 0; i < data.length; i++) {
+            category_flowboxes[i] = new Gtk.FlowBox() {
                 max_children_per_line = 10
             };
-            category_flowboxes[entries.key].bind_model(entries.value, create_button);
-            var copy_index = entries.key;
-            category_flowboxes[copy_index].child_activated.connect((child) => select(child.get_index(), copy_index));
+            category_flowboxes[i].bind_model(data[i], create_button);
+            var copy_index = i;
+            category_flowboxes[i].child_activated.connect((child) => select(child.get_index(), copy_index));
 
-            var expander = new Gtk.Expander(entries.key) {
+            var expander = new Gtk.Expander(category_names[i]) {
                 expanded = true,
-                child = category_flowboxes[entries.key]
+                child = category_flowboxes[i]
             };
 
             main_window.images.categories.append(expander);
+            filter_categories.append(new IndexedT<bool>(i, true));
         }
 
+        sidebar_elem.bind_model(filter_categories, (obj) => {
+            var entry = (IndexedT<bool>) obj;
+            var switch_filter = new Adw.SwitchRow();
+            switch_filter.active = true;
+            switch_filter.notify["active"].connect(() => {
+                entry.data = switch_filter.get_active();
+                category_flowboxes[entry.index].visible = switch_filter.get_active();
+                if (searching) {
+                    search(main_window.search_bar);
+                }
+            });
+            switch_filter.title = category_names[entry.index];
+            return switch_filter;
+        });
+
         main_window.images.results.bind_model(search_results, create_button);
-        main_window.images.results.child_activated.connect((child) => select(child.get_index(), null));
+        main_window.images.results.child_activated.connect((child) => select(child.get_index(), -1));
     }
 
     public Gtk.Widget create_button(Object image){
@@ -103,28 +153,21 @@ public class ImagePage: SearchPage {
         return child;
     }
 
-    public Gtk.FlowBox selected_flowbox(string? category_name) {
-        if (category_name == null) {
+    public Gtk.FlowBox selected_flowbox(int index) {
+        if (index == -1) {
             return main_window.images.results;
         }
-        return category_flowboxes[category_name];
+        return category_flowboxes[index];
     }
 
-    public void deselect() {
+    public override void deselect() {
         if (selected_index == -1) return;
         var flowbox = selected_flowbox(selected_category);
         flowbox.selected_foreach((box, child) => box.unselect_child(child));
         selected_index = -1;
     }
 
-    public void select(int index, string? category) {
-        if (category != selected_category) {
-            deselect();
-        }
-        selected_index = index;
-        selected_category = category;
-        hover_by_index();
-    }
+    
 
     async void select_images_folder () throws Error {
         var file_dialog = new Gtk.FileDialog ();
@@ -135,7 +178,6 @@ public class ImagePage: SearchPage {
 
     public override async void initialize() {
         data_folder = File.new_for_path (Environment.get_user_data_dir () + "/quick-copy");
-        category_flowboxes = new Gee.TreeMap<string, Gtk.FlowBox>();
         load_images_folder.begin(data_folder);
         main_window.images.path_select.clicked.connect (() => select_images_folder ());
         main_window.images.path.buffer.set_text (data_folder.get_path().data);
@@ -151,8 +193,6 @@ public class ImagePage: SearchPage {
         });
         main_window.images.aspect_ratio.set_selected(2);
         main_window.images.preview.icon_size = Gtk.IconSize.LARGE;
-
-
     }
 
 
@@ -165,8 +205,15 @@ public class ImagePage: SearchPage {
             main_window.images.results.bind_model(new ListStore(typeof(ImageEntry)), create_button);
             search_results.remove_all();
             string deduped = dedup(search_string);
+            int index = 0;
             foreach(var entry in data){
-                foreach(var item in entry.value){
+                IndexedT<bool> do_filter = (IndexedT<bool>) filter_categories.get_item(index);
+                index += 1;
+                if (!do_filter.data) {
+                    continue;
+                }
+
+                foreach(var item in entry){
                     if (item.match(deduped))
                         search_results.append(item);
                 }
@@ -202,11 +249,11 @@ public class ImagePage: SearchPage {
         }
     }
 
-    public void hover_by_index(){
+    public override void hover_by_index(){
         if (selected_index == -1) {
             return;
         }
-        if (selected_category == null) {
+        if (selected_category == -1) {
             hover((ImageEntry) search_results.get_item(selected_index), true);
         } else {
             hover((ImageEntry) data[selected_category].get_item(selected_index), true);
@@ -264,15 +311,21 @@ public class ImagePage: SearchPage {
     }
 }
 
-public class EmojiPage: SearchPage {
-    Gdk.Clipboard clipboard;
+class IndexedT<T>: Object {
+    public uint index;
+    public T data;
+
+    public IndexedT(uint index, T data) {
+        this.index = index;
+        this.data = data;
+    }
+}
+
+public class EmojiPage: CategorizedSearchPage {
     ObservableArrayList<EmojiEntry>[] emoji_entries;
-    ListStore search_results;
     ListStore variants;
-    uint show_first_n_results = 200;
     private Gee.TreeMap<string, int> score_map;
     private string _locale;
-    public int selected_category = -1;
     public string locale {
         get { return _locale; }
         set {
@@ -283,7 +336,7 @@ public class EmojiPage: SearchPage {
     }
     string[] group_labels = { "smileys-emotion", "people-body", "component", "animals-nature", "food-drink", "travel-places", "activities", "objects", "symbols", "flags" };
     public MainUI main_window;
-    public Gtk.FlowBox[] category_flowboxes;
+    Gtk.ListBox sidebar_elem;
 
     public EmojiPage(MainUI main_window, Gdk.Clipboard clipboard, string locale) {
         this.main_window = main_window;
@@ -291,12 +344,14 @@ public class EmojiPage: SearchPage {
         this.locale = locale;
         this.score_map = new Gee.TreeMap<string, int>((a, b) => strcmp(a, b));
         this.variants = new ListStore(typeof(EmojiEntry));
+        this.sidebar_elem = new Gtk.ListBox();
+        this.sidebar = this.sidebar_elem;
+        this.show_first_n_results = 200;
     }
-
-
 
     public override async void initialize() {
         category_flowboxes = new Gtk.FlowBox[group_labels.length];
+        filter_categories = new ListStore(typeof(IndexedT<bool>));
         for (var index = 0; index < group_labels.length; index++) {
             var grouped_emojis = emoji_entries[index];
             var expander = new Gtk.Expander(group_labels[index]);
@@ -310,8 +365,24 @@ public class EmojiPage: SearchPage {
             category_flowboxes[index].child_activated.connect((child) => select(child.get_index(), copy_index));
             expander.child = category_flowboxes[index];
             main_window.emojis.display.append(expander);
+
+            filter_categories.append(new IndexedT<bool>(index, true));
         }
 
+        sidebar_elem.bind_model(filter_categories, (obj) => {
+            var entry = (IndexedT<bool>) obj;
+            var switch_filter = new Adw.SwitchRow();
+            switch_filter.active = true;
+            switch_filter.notify["active"].connect(() => {
+                entry.data = switch_filter.get_active();
+                category_flowboxes[entry.index].visible = switch_filter.get_active();
+                if (searching) {
+                    search(main_window.search_bar);
+                }
+            });
+            switch_filter.title = group_labels[entry.index];
+            return switch_filter;
+        });
         this.result_bind_model(search_results);
         main_window.emojis.results.child_activated.connect((child) => select(child.get_index(), -1));
         main_window.emojis.variants.bind_model(variants, create_variant);
@@ -324,23 +395,14 @@ public class EmojiPage: SearchPage {
         return category_flowboxes[index];
     }
 
-    public void deselect() {
+    public override void deselect() {
         if (selected_index == -1) return;
         var flowbox = selected_flowbox(selected_category);
         flowbox.selected_foreach((box, child) => box.unselect_child(child));
         selected_index = -1;
     }
 
-    public void select(int index, int category) {
-        if (category != selected_category) {
-            deselect();
-        }
-        selected_index = index;
-        selected_category = category;
-        hover_by_index();
-    }
-
-    public void hover_by_index(){
+    public override void hover_by_index(){
         if (selected_index == -1) {
             return;
         }
@@ -405,7 +467,7 @@ public class EmojiPage: SearchPage {
                 return true;
             }
             return false;
-            });
+        });
         child.add_controller(gesture_click);
         child.add_controller(keyboard_controller);
         return child;
@@ -433,7 +495,13 @@ public class EmojiPage: SearchPage {
     public void calc_search_results(string search_string){
         search_results.remove_all();
         string deduped = dedup(search_string);
+        int index = 0;
         foreach(var list in emoji_entries){
+            IndexedT<bool> do_filter = (IndexedT<bool>) filter_categories.get_item(index);
+            index += 1;
+            if (!do_filter.data) {
+                continue;
+            }
             foreach(var item in list){
                 if (item.match(deduped))
                     search_results.append(item);
@@ -483,7 +551,6 @@ public class EmojiPage: SearchPage {
     }
 }
 
-
 public class QuickCopy : Adw.Application {
     public MainUI main_window;
     public SearchPage[] pages;
@@ -502,7 +569,6 @@ public class QuickCopy : Adw.Application {
         application_id = "com.ekstdo.quick-copy";
         flags = ApplicationFlags.DEFAULT_FLAGS;
     }
-    
 
     public async void load_giphy_icon() {
         try {
@@ -514,9 +580,6 @@ public class QuickCopy : Adw.Application {
             main_window.tabs.remove_page(2);
         }
     }
-
-    
-
 
     public override void activate() {
         if (main_window != null) {
@@ -541,6 +604,7 @@ public class QuickCopy : Adw.Application {
         foreach(var page in pages){
             page.initialize.begin();
         }
+        main_window.split_view.sidebar = pages[current_page].sidebar;
         main_window.search_bar.changed.connect((t) => {
             string search_string = t.get_text();
             int ind = search_string.index_of_char('>');
@@ -577,14 +641,14 @@ public class QuickCopy : Adw.Application {
             pages[current_page].search(t);
         });
         main_window.tabs.switch_page.connect((p, i) => {
-            if (i < 2)
+            if (i < 2) {
                 current_page = i;
+                stdout.printf("Hi\n");
+                main_window.split_view.sidebar = pages[current_page].sidebar;
+            }
         });
-
         load_giphy_icon.begin ();
     }
-
-
 
     public static int main(string[] args) {
         var app = QuickCopy.instance;
