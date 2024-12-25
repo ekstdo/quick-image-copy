@@ -13,17 +13,25 @@ public abstract class SearchPage {
     public abstract void search(Gtk.Editable t);
     public Gtk.Widget sidebar;
     public Gdk.Clipboard clipboard;
+    public abstract void on_enter();
 }
 
-public abstract class CategorizedSearchPage : SearchPage {
+public abstract class CategorizedSearchPage<T> : SearchPage {
+    public ObservableArrayList<T>[] data;
+
     public ListStore filter_categories;
     public string[] category_names;
     public Gtk.FlowBox[] category_flowboxes;
-    public ListStore search_results;
-    public int show_first_n_results = 100;
-    public abstract void hover_by_index();
-    public abstract void deselect();
 
+    public ListStore search_results;
+    public Gtk.FlowBox search_flowbox;
+
+    public int show_first_n_results = 100;
+    public abstract void hover(T entry, bool overwrite = false);
+
+    // UI Method, selects the index and category in the UI
+    // deselects all previously selected elements
+    // assuming only one element can be selected at a time
     public void select(int index, int category) {
         if (category != selected_category) {
             deselect();
@@ -32,12 +40,62 @@ public abstract class CategorizedSearchPage : SearchPage {
         selected_category = category;
         hover_by_index();
     }
+
+    // get the currently selected flowbox, but also 
+    // searching flowbox if a search is happening
+    public Gtk.FlowBox selected_flowbox(int index) {
+        if (index == -1) {
+            return search_flowbox;
+        }
+        return category_flowboxes[index];
+    }
+
+    public void deselect() {
+        if (selected_index == -1) return;
+        var flowbox = selected_flowbox(selected_category);
+        flowbox.selected_foreach((box, child) => box.unselect_child(child));
+        selected_index = -1;
+    }
+
+    // obtains the data entry, which is currently selected
+    public T? selected_entry() {
+        // stdout.printf("IND: %d %d\n", selected_category, selected_index);
+        if (selected_category == -1) {
+            return (T?) search_results.get_item(selected_index);
+        } else {
+            return data[selected_category].get(selected_index);
+        }
+    }
+
+    // selects the first element, which is currently displayed (either 
+    // searching or not), if no previous selection was made
+    public void default_select() {
+        int to_be_selected_index = selected_index;
+        int to_be_selected_category = selected_category;
+        if (selected_index == -1) {
+            to_be_selected_index = 0;
+        }
+        if (selected_category == -1 && !searching) {
+            to_be_selected_category = 0;
+        }
+        select(to_be_selected_index, to_be_selected_category);
+    }
+
+    public void hover_by_index(){
+        if (selected_index == -1) {
+            return;
+        }
+        if (selected_category == -1) {
+            hover((T) search_results.get_item(selected_index), true);
+        } else {
+            hover((T) data[selected_category].get_item(selected_index), true);
+        }
+    }
 }
 
-public class ImagePage: CategorizedSearchPage {
+public class ImagePage: CategorizedSearchPage<ImageEntry> {
     public MainUI main_window;
     private File data_folder;
-    public ObservableArrayList<ImageEntry>[] data;
     Gee.TreeMap<string, int> score_map;
     public Gtk.ListBox sidebar_elem;
 
@@ -48,6 +106,7 @@ public class ImagePage: CategorizedSearchPage {
         this.sidebar_elem = new Gtk.ListBox();
         this.sidebar = this.sidebar_elem;
         this.filter_categories = new ListStore(typeof(IndexedT<bool>));
+        this.search_flowbox = main_window.images.results;
     }
 
     void decompose(Gee.TreeMap<string, ObservableArrayList<ImageEntry>> data) {
@@ -153,22 +212,6 @@ public class ImagePage: CategorizedSearchPage {
         return child;
     }
 
-    public Gtk.FlowBox selected_flowbox(int index) {
-        if (index == -1) {
-            return main_window.images.results;
-        }
-        return category_flowboxes[index];
-    }
-
-    public override void deselect() {
-        if (selected_index == -1) return;
-        var flowbox = selected_flowbox(selected_category);
-        flowbox.selected_foreach((box, child) => box.unselect_child(child));
-        selected_index = -1;
-    }
-
-    
-
     async void select_images_folder () throws Error {
         var file_dialog = new Gtk.FileDialog ();
         var file = yield file_dialog.select_folder (main_window, null);
@@ -238,7 +281,8 @@ public class ImagePage: CategorizedSearchPage {
                 }
                 return (score_a > score_b) ? -1 : (score_a == score_b) ? 0 : 1;
             });
-            search_results.splice(show_first_n_results, search_results.n_items - show_first_n_results, new ImageEntry[0]);
+            var show_n_entries = search_results.n_items < show_first_n_results ? search_results.n_items : show_first_n_results;
+            search_results.splice(show_n_entries, search_results.n_items - show_n_entries, new ImageEntry[0]);
             main_window.images.results.bind_model(search_results, create_button);
             searching = true;
         } else {
@@ -249,15 +293,14 @@ public class ImagePage: CategorizedSearchPage {
         }
     }
 
-    public override void hover_by_index(){
-        if (selected_index == -1) {
+
+
+    public override void on_enter() {
+        default_select();
+        var selected = this.selected_entry();
+        if (selected == null)
             return;
-        }
-        if (selected_category == -1) {
-            hover((ImageEntry) search_results.get_item(selected_index), true);
-        } else {
-            hover((ImageEntry) data[selected_category].get_item(selected_index), true);
-        }
+        clipboard.set_texture(Gdk.Texture.for_pixbuf(rescale(selected.image)));
     }
 
     public Gdk.Pixbuf rescale(Gdk.Pixbuf input) {
@@ -287,7 +330,7 @@ public class ImagePage: CategorizedSearchPage {
         return input.scale_simple(width, height, interp_type);
     }
 
-    public void hover(ImageEntry entry, bool overwrite = false) {
+    public override void hover(ImageEntry entry, bool overwrite = false) {
         if (selected_index != -1 && !overwrite) {
             return;
         }
@@ -321,8 +364,7 @@ class IndexedT<T>: Object {
     }
 }
 
-public class EmojiPage: CategorizedSearchPage {
-    ObservableArrayList<EmojiEntry>[] emoji_entries;
+public class EmojiPage: CategorizedSearchPage<EmojiEntry> {
     ListStore variants;
     private Gee.TreeMap<string, int> score_map;
     private string _locale;
@@ -330,7 +372,7 @@ public class EmojiPage: CategorizedSearchPage {
         get { return _locale; }
         set {
             _locale = value;
-            emoji_entries = load_emoji_entries(value);
+            data = load_emoji_entries(value);
             search_results = new ListStore(typeof(EmojiEntry));
         }
     }
@@ -353,7 +395,7 @@ public class EmojiPage: CategorizedSearchPage {
         category_flowboxes = new Gtk.FlowBox[group_labels.length];
         filter_categories = new ListStore(typeof(IndexedT<bool>));
         for (var index = 0; index < group_labels.length; index++) {
-            var grouped_emojis = emoji_entries[index];
+            var grouped_emojis = data[index];
             var expander = new Gtk.Expander(group_labels[index]);
             expander.expanded = true;
 
@@ -388,32 +430,16 @@ public class EmojiPage: CategorizedSearchPage {
         main_window.emojis.variants.bind_model(variants, create_variant);
     }
 
-    public Gtk.FlowBox selected_flowbox(int index) {
-        if (index == -1) {
-            return main_window.emojis.results;
-        }
-        return category_flowboxes[index];
-    }
-
-    public override void deselect() {
-        if (selected_index == -1) return;
-        var flowbox = selected_flowbox(selected_category);
-        flowbox.selected_foreach((box, child) => box.unselect_child(child));
-        selected_index = -1;
-    }
-
-    public override void hover_by_index(){
-        if (selected_index == -1) {
+    public override void on_enter() {
+        default_select();
+        var selected = this.selected_entry();
+        if (selected == null) {
             return;
         }
-        if (selected_category == -1) {
-            hover((EmojiEntry) search_results.get_item(selected_index), true);
-        } else {
-            hover((EmojiEntry) emoji_entries[selected_category].get_item(selected_index), true);
-        }
+        clipboard.set_text(selected.unicode);
     }
 
-    public void hover(EmojiEntry entry, bool overwrite = false) {
+    public override void hover(EmojiEntry entry, bool overwrite = false) {
         if (selected_index != -1 && !overwrite) {
             return;
         }
@@ -496,7 +522,7 @@ public class EmojiPage: CategorizedSearchPage {
         search_results.remove_all();
         string deduped = dedup(search_string);
         int index = 0;
-        foreach(var list in emoji_entries){
+        foreach(var list in data){
             IndexedT<bool> do_filter = (IndexedT<bool>) filter_categories.get_item(index);
             index += 1;
             if (!do_filter.data) {
@@ -528,6 +554,7 @@ public class EmojiPage: CategorizedSearchPage {
             }
             return (score_a > score_b) ? -1 : (score_a == score_b) ? 0 : 1;
         });
+        var show_n_results = search_results.n_items < show_first_n_results ? search_results.n_items : show_first_n_results ;
         search_results.splice(show_first_n_results, search_results.n_items - show_first_n_results, new EmojiEntry[0]);
     }
 
@@ -605,6 +632,9 @@ public class QuickCopy : Adw.Application {
             page.initialize.begin();
         }
         main_window.split_view.sidebar = pages[current_page].sidebar;
+        main_window.search_bar.activate.connect(() => {
+            pages[current_page].on_enter();
+        });
         main_window.search_bar.changed.connect((t) => {
             string search_string = t.get_text();
             int ind = search_string.index_of_char('>');
@@ -643,7 +673,6 @@ public class QuickCopy : Adw.Application {
         main_window.tabs.switch_page.connect((p, i) => {
             if (i < 2) {
                 current_page = i;
-                stdout.printf("Hi\n");
                 main_window.split_view.sidebar = pages[current_page].sidebar;
             }
         });
