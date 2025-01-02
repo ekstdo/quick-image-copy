@@ -36,6 +36,10 @@ some emojis or a folder of your custom emotes.
 
 - [ ] Editable Tags
 
+- [ ] Performance 
+
+    - [ ] Lazy loading image entries
+
 ## Maybe someday
 
 - [ ] "Graphing mathematical functions" category

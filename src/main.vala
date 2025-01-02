@@ -170,6 +170,26 @@ public class ImagePage: CategorizedSearchPage<ImageEntry> {
         main_window.images.results.child_activated.connect((child) => select(child.get_index(), -1));
     }
 
+    public bool on_keypress(uint k, uint c, Gdk.ModifierType s) {
+        stdout.printf("%d %d\n", (int) k, (int) c);
+        var entry = selected_entry();
+        if (c == 36) { // Enter
+            clipboard.set_texture(Gdk.Texture.for_pixbuf(rescale(entry.image)));
+            return true;
+        } else if (k >= 48 && k < 122) {
+            main_window.search_bar.grab_focus_without_selecting ();
+            var string_builder = new StringBuilder();
+            string_builder.append_c((char) k);
+            main_window.search_bar.buffer.insert_text(main_window.search_bar.buffer.get_length(), string_builder.str.data);
+            main_window.search_bar.set_position(-1);
+            return true;
+        } else if (c == 9) { // escape
+            deselect();
+            return true;
+        }
+        return false;
+    }
+
     public Gtk.Widget create_button(Object image){
         ImageEntry entry = (ImageEntry) image;
         var child = new Gtk.FlowBoxChild();
@@ -187,27 +207,8 @@ public class ImagePage: CategorizedSearchPage<ImageEntry> {
             }
         });
 
-        var keyboard_controller = new Gtk.EventControllerKey();
-        keyboard_controller.key_pressed.connect((k, c, s) => {
-            stdout.printf("%d %d\n", (int) k, (int) c);
-            if (c == 36) { // Enter
-                clipboard.set_texture(Gdk.Texture.for_pixbuf(rescale(entry.image)));
-                return true;
-            } else if (k >= 48 && k < 122) {
-                main_window.search_bar.grab_focus_without_selecting ();
-                var string_builder = new StringBuilder();
-                string_builder.append_c((char) k);
-                main_window.search_bar.buffer.insert_text(main_window.search_bar.buffer.get_length(), string_builder.str.data);
-                main_window.search_bar.set_position(-1);
-                return true;
-            } else if (c == 9) {
-                deselect();
-                return true;
-            }
-            return false;
-        });
+
         child.add_controller(gesture_click);
-        child.add_controller(keyboard_controller);
 
         return child;
     }
@@ -231,11 +232,15 @@ public class ImagePage: CategorizedSearchPage<ImageEntry> {
         });
         main_window.images.height.value = 50;
         main_window.images.height.value_changed.connect(() => {
-            stdout.printf("yo\n");
             hover_by_index();
         });
         main_window.images.aspect_ratio.set_selected(2);
         main_window.images.preview.icon_size = Gtk.IconSize.LARGE;
+
+        var keyboard_controller = new Gtk.EventControllerKey();
+        keyboard_controller.key_pressed.connect(on_keypress);
+        main_window.images.add_controller(keyboard_controller);
+
     }
 
 
@@ -428,6 +433,28 @@ public class EmojiPage: CategorizedSearchPage<EmojiEntry> {
         this.result_bind_model(search_results);
         main_window.emojis.results.child_activated.connect((child) => select(child.get_index(), -1));
         main_window.emojis.variants.bind_model(variants, create_variant);
+
+
+        var keyboard_controller = new Gtk.EventControllerKey();
+        keyboard_controller.key_pressed.connect((k, c, s) => {
+            stdout.printf("%d %d\n", (int) k, (int) c);
+            if (c == 36) { // Enter
+                clipboard.set_text(selected_entry().unicode);
+                return true;
+            } else if (k >= 48 && k < 122) {
+                main_window.search_bar.grab_focus_without_selecting ();
+                var string_builder = new StringBuilder();
+                string_builder.append_c((char) k);
+                main_window.search_bar.buffer.insert_text(main_window.search_bar.buffer.get_length(), string_builder.str.data);
+                main_window.search_bar.set_position(-1);
+                return true;
+            } else if (c == 9) {
+                deselect();
+                return true;
+            }
+            return false;
+        });
+        main_window.emojis.add_controller(keyboard_controller);
     }
 
     public override void on_enter() {
@@ -475,27 +502,7 @@ public class EmojiPage: CategorizedSearchPage<EmojiEntry> {
             }
         });
 
-        var keyboard_controller = new Gtk.EventControllerKey();
-        keyboard_controller.key_pressed.connect((k, c, s) => {
-            stdout.printf("%d %d\n", (int) k, (int) c);
-            if (c == 36) { // Enter
-                clipboard.set_text(label_text);
-                return true;
-            } else if (k >= 48 && k < 122) {
-                main_window.search_bar.grab_focus_without_selecting ();
-                var string_builder = new StringBuilder();
-                string_builder.append_c((char) k);
-                main_window.search_bar.buffer.insert_text(main_window.search_bar.buffer.get_length(), string_builder.str.data);
-                main_window.search_bar.set_position(-1);
-                return true;
-            } else if (c == 9) {
-                deselect();
-                return true;
-            }
-            return false;
-        });
         child.add_controller(gesture_click);
-        child.add_controller(keyboard_controller);
         return child;
     }
 
@@ -555,7 +562,7 @@ public class EmojiPage: CategorizedSearchPage<EmojiEntry> {
             return (score_a > score_b) ? -1 : (score_a == score_b) ? 0 : 1;
         });
         var show_n_results = search_results.n_items < show_first_n_results ? search_results.n_items : show_first_n_results ;
-        search_results.splice(show_first_n_results, search_results.n_items - show_first_n_results, new EmojiEntry[0]);
+        search_results.splice(show_n_results, search_results.n_items - show_n_results, new EmojiEntry[0]);
     }
 
     public override void search(Gtk.Editable t) {
